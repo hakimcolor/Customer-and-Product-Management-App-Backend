@@ -1,0 +1,46 @@
+model Customer {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String?
+  address   String?
+  balance   Float     @default(0)
+  dues      Float     @default(0)
+  sales     Sale[]
+  payments  Payment[]
+  ledgers   Ledger[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("customers")
+}
+
+model Supplier {
+  id        Int        @id @default(autoincrement())
+  name      String
+  phone     String?
+  address   String?
+  balance   Float      @default(0)
+  dues      Float      @default(0)
+  purchases Purchase[]
+  payments  Payment[]
+  ledgers   Ledger[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("suppliers")
+}
+
+model Ledger {
+  id         Int        @id @default(autoincrement())
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  customerId Int?
+  supplier   Supplier?  @relation(fields: [supplierId], references: [id])
+  supplierId Int?
+  type       LedgerType
+  amount     Float
+  date       DateTime   @default(now())
+  notes      String?
+  createdAt  DateTime   @default(now())
+
+  @@map("ledgers")
+}

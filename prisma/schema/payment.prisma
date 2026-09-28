@@ -1,0 +1,18 @@
+model Payment {
+  id          Int         @id @default(autoincrement())
+  customer    Customer?   @relation(fields: [customerId], references: [id])
+  customerId  Int?
+  supplier    Supplier?   @relation(fields: [supplierId], references: [id])
+  supplierId  Int?
+  purchase    Purchase?   @relation(fields: [purchaseId], references: [id])
+  purchaseId  Int?
+  sale        Sale?       @relation(fields: [saleId], references: [id])
+  saleId      Int?
+  amount      Float
+  paymentType PaymentType @default(CASH)
+  notes       String?
+  date        DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+
+  @@map("payments")
+}

@@ -1,0 +1,88 @@
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("categories")
+}
+
+model Brand {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("brands")
+}
+
+model Product {
+  id             Int            @id @default(autoincrement())
+  title          String
+  brand          Brand?         @relation(fields: [brandId], references: [id])
+  brandId        Int?
+  category       Category?      @relation(fields: [categoryId], references: [id])
+  categoryId     Int?
+  unitType       String?
+  purchasePrice  Float
+  sellingPrice   Float
+  barcode        String?        @unique
+  vat            Float          @default(0)
+  alertQuantity  Int            @default(5)
+  stocks         Stock[]
+  purchaseItems  PurchaseItem[]
+  saleItems      SaleItem[]
+  damages        Damage[]
+  stockTransfers StockTransfer[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("products")
+}
+
+model Stock {
+  id           Int      @id @default(autoincrement())
+  product      Product  @relation(fields: [productId], references: [id])
+  productId    Int
+  branch       Branch   @relation(fields: [branchId], references: [id])
+  branchId     Int
+  quantity     Int      @default(0)
+  openingStock Int      @default(0)
+  onStock      Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([productId, branchId])
+  @@map("stocks")
+}
+
+model Damage {
+  id        Int      @id @default(autoincrement())
+  product   Product  @relation(fields: [productId], references: [id])
+  productId Int
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  branchId  Int
+  quantity  Int
+  reason    String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@map("damages")
+}
+
+model StockTransfer {
+  id           Int      @id @default(autoincrement())
+  fromBranch   Branch   @relation("FromBranch", fields: [fromBranchId], references: [id])
+  fromBranchId Int
+  toBranch     Branch   @relation("ToBranch", fields: [toBranchId], references: [id])
+  toBranchId   Int
+  product      Product  @relation(fields: [productId], references: [id])
+  productId    Int
+  quantity     Int
+  date         DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@map("stock_transfers")
+}

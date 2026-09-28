@@ -1,0 +1,50 @@
+model Expense {
+  id           Int      @id @default(autoincrement())
+  category     String
+  description  String?
+  amount       Float
+  date         DateTime @default(now())
+  voucherImage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("expenses")
+}
+
+model Loan {
+  id        Int      @id @default(autoincrement())
+  creditor  String
+  amount    Float
+  loanType  LoanType
+  balance   Float
+  date      DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("loans")
+}
+
+model Capital {
+  id         Int      @id @default(autoincrement())
+  ownerId    String
+  ownerName  String
+  percentage Float
+  amount     Float
+  date       DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("capital")
+}
+
+model SMSLog {
+  id         Int      @id @default(autoincrement())
+  to         String
+  message    String
+  sentStatus Boolean  @default(false)
+  date       DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@map("sms_logs")
+}

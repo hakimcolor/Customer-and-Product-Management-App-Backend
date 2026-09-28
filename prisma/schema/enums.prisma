@@ -1,0 +1,33 @@
+enum Role {
+  ADMIN
+  MANAGER
+  ACCOUNTANT
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+enum PaymentType {
+  CASH
+  CARD
+  MOBILE
+}
+
+enum LoanType {
+  BORROW
+  LEND
+}
+
+enum LedgerType {
+  DEBIT
+  CREDIT
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
