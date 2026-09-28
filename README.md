@@ -92,24 +92,27 @@ npm run dev
 - [x] Project setup (Node.js + TypeScript + Express)
 - [x] Prisma schema — all 18 entities (User, Branch, Customer, Supplier, Product, Stock, Purchase, Sale, Payment, Expense, Loan, Capital, Damage, Ledger, StockTransfer, SMSLog, Category, Brand)
 - [x] JWT Authentication middleware
-- [x] All Controllers (auth, user, branch, customer, supplier, product, category, purchase, sale, payment, expense, loan, report, sms)
+- [x] All Controllers (auth, user, branch, customer, supplier, product, category, purchase, sale, payment, expense, loan, report, sms, print, return)
 - [x] All Routes wired up
 - [x] Role-based authorization (ADMIN / MANAGER / ACCOUNTANT)
 - [x] Stock tracking on purchase/sale transactions
 - [x] Stock transfer between branches
 - [x] Reporting endpoints (daily summary, profit, dues, stock alerts, best sellers)
 - [x] File upload for expense vouchers (multer)
+- [x] Input validation with Zod on all write endpoints
+- [x] Global error handling middleware
+- [x] Pagination on all list endpoints (`?page=1&limit=20`)
+- [x] Sale return endpoint — restores stock automatically
+- [x] Purchase return endpoint — reduces stock automatically
+- [x] Print invoice endpoint (`GET /api/print/invoice/:saleId`)
+- [x] Barcode data endpoint (`GET /api/print/barcodes`)
+- [x] Database seed file (admin user, branches, categories, brands, role permissions)
 - [x] GitHub push
 
 ### 🔜 Next Steps
-- [ ] Connect to PostgreSQL and run `prisma migrate dev`
-- [ ] Seed initial admin user
-- [ ] Add input validation (zod or express-validator)
-- [ ] Add error handling middleware
-- [ ] Sale/Purchase return endpoints
-- [ ] Print invoice endpoint
-- [ ] SMS provider integration (Twilio / SSL Wireless)
-- [ ] Pagination on list endpoints
+- [ ] Connect to PostgreSQL and run `npm run db:migrate`
+- [ ] Run seed: `npm run db:seed`
+- [ ] SMS provider integration (Twilio / SSL Wireless — stub ready in sms.controller.ts)
 
 ---
 
@@ -119,5 +122,6 @@ npm run dev
 npm run dev          # Start dev server with nodemon
 npm run build        # Compile TypeScript
 npm run db:migrate   # Run Prisma migrations
+npm run db:seed      # Seed initial data (admin user, categories, brands)
 npm run db:studio    # Open Prisma Studio
 ```

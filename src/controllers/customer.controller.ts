@@ -1,12 +1,16 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
+import { getPagination, paginatedResponse } from '../utils/pagination';
 
 export const getCustomers = async (req: Request, res: Response): Promise<void> => {
   const { search } = req.query;
-  const customers = await prisma.customer.findMany({
-    where: search ? { OR: [{ name: { contains: String(search), mode: 'insensitive' } }, { phone: { contains: String(search) } }] } : undefined,
-  });
-  res.json(customers);
+  const { skip, take, page, limit } = getPagination(req);
+  const where = search ? { OR: [{ name: { contains: String(search), mode: 'insensitive' as const } }, { phone: { contains: String(search) } }] } : undefined;
+  const [customers, total] = await Promise.all([
+    prisma.customer.findMany({ where, skip, take, orderBy: { name: 'asc' } }),
+    prisma.customer.count({ where }),
+  ]);
+  res.json(paginatedResponse(customers, total, page, limit));
 };
 
 export const createCustomer = async (req: Request, res: Response): Promise<void> => {

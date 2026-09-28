@@ -1,8 +1,16 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
+import { getPagination, paginatedResponse } from '../utils/pagination';
 
-export const getSuppliers = async (_req: Request, res: Response): Promise<void> => {
-  res.json(await prisma.supplier.findMany());
+export const getSuppliers = async (req: Request, res: Response): Promise<void> => {
+  const { search } = req.query;
+  const { skip, take, page, limit } = getPagination(req);
+  const where = search ? { OR: [{ name: { contains: String(search), mode: 'insensitive' as const } }, { phone: { contains: String(search) } }] } : undefined;
+  const [suppliers, total] = await Promise.all([
+    prisma.supplier.findMany({ where, skip, take, orderBy: { name: 'asc' } }),
+    prisma.supplier.count({ where }),
+  ]);
+  res.json(paginatedResponse(suppliers, total, page, limit));
 };
 
 export const createSupplier = async (req: Request, res: Response): Promise<void> => {

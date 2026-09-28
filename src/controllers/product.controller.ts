@@ -1,18 +1,21 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
+import { getPagination, paginatedResponse } from '../utils/pagination';
 
 export const getProducts = async (req: Request, res: Response): Promise<void> => {
   const { search, categoryId, brandId, barcode } = req.query;
-  const products = await prisma.product.findMany({
-    where: {
-      ...(barcode && { barcode: String(barcode) }),
-      ...(categoryId && { categoryId: parseInt(String(categoryId)) }),
-      ...(brandId && { brandId: parseInt(String(brandId)) }),
-      ...(search && { title: { contains: String(search), mode: 'insensitive' } }),
-    },
-    include: { category: true, brand: true },
-  });
-  res.json(products);
+  const { skip, take, page, limit } = getPagination(req);
+  const where = {
+    ...(barcode && { barcode: String(barcode) }),
+    ...(categoryId && { categoryId: parseInt(String(categoryId)) }),
+    ...(brandId && { brandId: parseInt(String(brandId)) }),
+    ...(search && { title: { contains: String(search), mode: 'insensitive' as const } }),
+  };
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({ where, skip, take, include: { category: true, brand: true }, orderBy: { title: 'asc' } }),
+    prisma.product.count({ where }),
+  ]);
+  res.json(paginatedResponse(products, total, page, limit));
 };
 
 export const createProduct = async (req: Request, res: Response): Promise<void> => {

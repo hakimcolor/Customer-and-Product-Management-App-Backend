@@ -17,6 +17,8 @@ import expenseRoutes from './routes/expense.routes';
 import loanRoutes from './routes/loan.routes';
 import reportRoutes from './routes/report.routes';
 import smsRoutes from './routes/sms.routes';
+import printRoutes from './routes/print.routes';
+import { errorHandler } from './middleware/error.middleware';
 
 const app = express();
 
@@ -37,7 +39,11 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api', loanRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/sms', smsRoutes);
+app.use('/api/print', printRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'OK' }));
+
+// Global error handler — must be last
+app.use(errorHandler);
 
 export default app;

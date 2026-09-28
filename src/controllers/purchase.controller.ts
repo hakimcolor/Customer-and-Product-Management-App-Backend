@@ -1,17 +1,19 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
+import { getPagination, paginatedResponse } from '../utils/pagination';
 
 export const getPurchases = async (req: Request, res: Response): Promise<void> => {
   const { supplierId, startDate, endDate } = req.query;
-  const purchases = await prisma.purchase.findMany({
-    where: {
-      ...(supplierId && { supplierId: parseInt(String(supplierId)) }),
-      ...(startDate && endDate && { date: { gte: new Date(String(startDate)), lte: new Date(String(endDate)) } }),
-    },
-    include: { supplier: true, branch: true, items: { include: { product: true } } },
-    orderBy: { date: 'desc' },
-  });
-  res.json(purchases);
+  const { skip, take, page, limit } = getPagination(req);
+  const where = {
+    ...(supplierId && { supplierId: parseInt(String(supplierId)) }),
+    ...(startDate && endDate && { date: { gte: new Date(String(startDate)), lte: new Date(String(endDate)) } }),
+  };
+  const [purchases, total] = await Promise.all([
+    prisma.purchase.findMany({ where, skip, take, include: { supplier: true, branch: true, items: { include: { product: true } } }, orderBy: { date: 'desc' } }),
+    prisma.purchase.count({ where }),
+  ]);
+  res.json(paginatedResponse(purchases, total, page, limit));
 };
 
 export const createPurchase = async (req: Request, res: Response): Promise<void> => {
