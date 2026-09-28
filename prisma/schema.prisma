@@ -1,3 +1,0 @@
-// This file is kept for backward compatibility.
-// The actual schema is split into prisma/schema/ folder.
-// Run: npx prisma generate --schema=prisma/schema

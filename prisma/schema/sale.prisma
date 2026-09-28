@@ -1,5 +1,6 @@
 model Sale {
   id            Int           @id @default(autoincrement())
+  invoiceNo     String?       @unique
   customer      Customer?     @relation(fields: [customerId], references: [id])
   customerId    Int?
   branch        Branch        @relation(fields: [branchId], references: [id])
@@ -7,10 +8,13 @@ model Sale {
   date          DateTime      @default(now())
   totalAmount   Float
   discount      Float         @default(0)
+  vat           Float         @default(0)
   dueAmount     Float         @default(0)
   paymentStatus PaymentStatus @default(UNPAID)
+  notes         String?
   items         SaleItem[]
   payments      Payment[]
+  returns       SaleReturn[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -26,7 +30,34 @@ model SaleItem {
   quantity  Int
   rate      Float
   discount  Float    @default(0)
+  vat       Float    @default(0)
   createdAt DateTime @default(now())
 
   @@map("sale_items")
+}
+
+model SaleReturn {
+  id         Int              @id @default(autoincrement())
+  sale       Sale             @relation(fields: [saleId], references: [id])
+  saleId     Int
+  date       DateTime         @default(now())
+  totalAmount Float
+  reason     String?
+  items      SaleReturnItem[]
+  createdAt  DateTime         @default(now())
+
+  @@map("sale_returns")
+}
+
+model SaleReturnItem {
+  id           Int        @id @default(autoincrement())
+  saleReturn   SaleReturn @relation(fields: [saleReturnId], references: [id], onDelete: Cascade)
+  saleReturnId Int
+  product      Product    @relation(fields: [productId], references: [id])
+  productId    Int
+  quantity     Int
+  rate         Float
+  createdAt    DateTime   @default(now())
+
+  @@map("sale_return_items")
 }

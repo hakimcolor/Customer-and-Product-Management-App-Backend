@@ -1,7 +1,14 @@
 enum Role {
+  SUPER_ADMIN
   ADMIN
-  MANAGER
+  BRANCH_MANAGER
+  SALES_MANAGER
+  SALESMAN
   ACCOUNTANT
+  INVENTORY_MANAGER
+  PURCHASE_MANAGER
+  CASHIER
+  EMPLOYEE
 }
 
 enum PaymentStatus {
@@ -12,8 +19,10 @@ enum PaymentStatus {
 
 enum PaymentType {
   CASH
+  BANK
   CARD
   MOBILE
+  OTHER
 }
 
 enum LoanType {
@@ -30,4 +39,40 @@ enum UserStatus {
   PENDING
   ACTIVE
   INACTIVE
+}
+
+enum TransferStatus {
+  REQUESTED
+  APPROVED
+  SENT
+  RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum AccountType {
+  CASH
+  BANK
+  MOBILE_BANKING
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+}
+
+enum StockAdjustmentReason {
+  PHYSICAL_CORRECTION
+  MISSING_STOCK
+  DAMAGED
+  EXPIRED
+  THEFT
+  DATA_CORRECTION
+  OPENING_STOCK
+  OTHER
 }

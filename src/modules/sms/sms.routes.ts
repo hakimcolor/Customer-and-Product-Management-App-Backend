@@ -1,12 +1,10 @@
 import { Router } from 'express';
-import { sendSMS, getSMSLogs } from './sms.controller';
+import { sendSMS, bulkSMS, getSMSLogs } from './sms.controller';
 import { authenticate, authorize } from '../../middleware/auth.middleware';
-import { z } from 'zod';
-import { validate } from '../../middleware/validate.middleware';
 
-const smsSchema = z.object({ to: z.string().min(1), message: z.string().min(1) });
 const router = Router();
 router.use(authenticate);
-router.post('/send', authorize('ADMIN', 'MANAGER'), validate(smsSchema), sendSMS);
+router.post('/send', authorize('ADMIN', 'MANAGER'), sendSMS);
+router.post('/bulk', authorize('ADMIN', 'MANAGER'), bulkSMS);
 router.get('/logs', getSMSLogs);
 export default router;

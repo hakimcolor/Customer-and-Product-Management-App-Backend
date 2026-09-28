@@ -1,46 +1,60 @@
 model Customer {
-  id        Int       @id @default(autoincrement())
-  name      String
-  phone     String?
-  address   String?
-  balance   Float     @default(0)
-  dues      Float     @default(0)
-  sales     Sale[]
-  payments  Payment[]
-  ledgers   Ledger[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id             Int       @id @default(autoincrement())
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  company        String?
+  taxNumber      String?
+  openingBalance Float     @default(0)
+  creditLimit    Float     @default(0)
+  balance        Float     @default(0)
+  dues           Float     @default(0)
+  status         Boolean   @default(true)
+  sales          Sale[]
+  payments       Payment[]
+  ledgers        Ledger[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@map("customers")
 }
 
 model Supplier {
-  id        Int        @id @default(autoincrement())
-  name      String
-  phone     String?
-  address   String?
-  balance   Float      @default(0)
-  dues      Float      @default(0)
-  purchases Purchase[]
-  payments  Payment[]
-  ledgers   Ledger[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id             Int        @id @default(autoincrement())
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  company        String?
+  taxNumber      String?
+  openingBalance Float      @default(0)
+  balance        Float      @default(0)
+  dues           Float      @default(0)
+  status         Boolean    @default(true)
+  purchases      Purchase[]
+  payments       Payment[]
+  ledgers        Ledger[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@map("suppliers")
 }
 
 model Ledger {
-  id         Int        @id @default(autoincrement())
-  customer   Customer?  @relation(fields: [customerId], references: [id])
-  customerId Int?
-  supplier   Supplier?  @relation(fields: [supplierId], references: [id])
-  supplierId Int?
-  type       LedgerType
-  amount     Float
-  date       DateTime   @default(now())
-  notes      String?
-  createdAt  DateTime   @default(now())
+  id          Int        @id @default(autoincrement())
+  customer    Customer?  @relation(fields: [customerId], references: [id])
+  customerId  Int?
+  supplier    Supplier?  @relation(fields: [supplierId], references: [id])
+  supplierId  Int?
+  type        LedgerType
+  amount      Float
+  balance     Float      @default(0)
+  description String?
+  refType     String?
+  refId       Int?
+  date        DateTime   @default(now())
+  createdAt   DateTime   @default(now())
 
   @@map("ledgers")
 }

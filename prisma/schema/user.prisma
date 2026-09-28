@@ -1,14 +1,22 @@
 model User {
-  id        Int        @id @default(autoincrement())
-  email     String     @unique
-  password  String
-  name      String
-  role      Role       @default(MANAGER)
-  status    UserStatus @default(PENDING)
-  branch    Branch?    @relation(fields: [branchId], references: [id])
-  branchId  Int?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id             Int        @id @default(autoincrement())
+  email          String     @unique
+  password       String
+  name           String
+  phone          String?
+  address        String?
+  profileImage   String?
+  role           Role       @default(EMPLOYEE)
+  status         UserStatus @default(PENDING)
+  branch         Branch?    @relation(fields: [branchId], references: [id])
+  branchId       Int?
+  joiningDate    DateTime?
+  resetToken     String?
+  resetTokenExp  DateTime?
+  loginHistory   LoginHistory[]
+  auditLogs      AuditLog[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@map("users")
 }
@@ -21,4 +29,32 @@ model RolePermission {
   updatedAt   DateTime @updatedAt
 
   @@map("role_permissions")
+}
+
+model LoginHistory {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  ip        String?
+  device    String?
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("login_histories")
+}
+
+model AuditLog {
+  id         Int         @id @default(autoincrement())
+  user       User?       @relation(fields: [userId], references: [id])
+  userId     Int?
+  action     AuditAction
+  module     String
+  recordId   String?
+  prevValue  Json?
+  newValue   Json?
+  ip         String?
+  device     String?
+  createdAt  DateTime    @default(now())
+
+  @@map("audit_logs")
 }

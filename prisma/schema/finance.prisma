@@ -3,6 +3,11 @@ model Expense {
   category     String
   description  String?
   amount       Float
+  paymentType  PaymentType @default(CASH)
+  branch       Branch?  @relation(fields: [branchId], references: [id])
+  branchId     Int?
+  accountId    Int?
+  account      Account? @relation(fields: [accountId], references: [id])
   date         DateTime @default(now())
   voucherImage String?
   createdAt    DateTime @default(now())
@@ -12,39 +17,132 @@ model Expense {
 }
 
 model Loan {
-  id        Int      @id @default(autoincrement())
-  creditor  String
-  amount    Float
-  loanType  LoanType
-  balance   Float
-  date      DateTime @default(now())
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int           @id @default(autoincrement())
+  creditor      String
+  amount        Float
+  loanType      LoanType
+  balance       Float
+  interestRate  Float         @default(0)
+  startDate     DateTime      @default(now())
+  dueDate       DateTime?
+  notes         String?
+  status        String        @default("ACTIVE")
+  payments      LoanPayment[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@map("loans")
 }
 
+model LoanPayment {
+  id        Int      @id @default(autoincrement())
+  loan      Loan     @relation(fields: [loanId], references: [id])
+  loanId    Int
+  amount    Float
+  date      DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@map("loan_payments")
+}
+
 model Capital {
-  id         Int      @id @default(autoincrement())
-  ownerId    String
-  ownerName  String
-  percentage Float
-  amount     Float
-  date       DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           Int                  @id @default(autoincrement())
+  ownerName    String
+  percentage   Float                @default(0)
+  amount       Float
+  balance      Float
+  date         DateTime             @default(now())
+  notes        String?
+  transactions CapitalTransaction[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@map("capital")
 }
 
+model CapitalTransaction {
+  id        Int      @id @default(autoincrement())
+  capital   Capital  @relation(fields: [capitalId], references: [id])
+  capitalId Int
+  type      String   // INVESTMENT, WITHDRAWAL
+  amount    Float
+  date      DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@map("capital_transactions")
+}
+
+model Account {
+  id             Int              @id @default(autoincrement())
+  name           String
+  accountType    AccountType      @default(CASH)
+  accountNumber  String?
+  bankName       String?
+  branch         Branch?          @relation(fields: [branchId], references: [id])
+  branchId       Int?
+  openingBalance Float            @default(0)
+  balance        Float            @default(0)
+  status         Boolean          @default(true)
+  transactions   AccountTransaction[]
+  expenses       Expense[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@map("accounts")
+}
+
+model AccountTransaction {
+  id          Int      @id @default(autoincrement())
+  account     Account  @relation(fields: [accountId], references: [id])
+  accountId   Int
+  type        String   // DEPOSIT, WITHDRAWAL, TRANSFER
+  amount      Float
+  balance     Float
+  description String?
+  refType     String?
+  refId       Int?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@map("account_transactions")
+}
+
 model SMSLog {
-  id         Int      @id @default(autoincrement())
-  to         String
-  message    String
-  sentStatus Boolean  @default(false)
-  date       DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  to             String
+  message        String
+  sentStatus     Boolean  @default(false)
+  providerResp   String?
+  sentBy         String?
+  date           DateTime @default(now())
+  createdAt      DateTime @default(now())
 
   @@map("sms_logs")
+}
+
+model SystemSetting {
+  id             Int      @id @default(autoincrement())
+  key            String   @unique
+  value          String
+  group          String   @default("general")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  userId    Int?
+  refType   String?
+  refId     Int?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
 }

@@ -10,6 +10,7 @@ model Payment {
   saleId      Int?
   amount      Float
   paymentType PaymentType @default(CASH)
+  accountId   Int?
   notes       String?
   date        DateTime    @default(now())
   createdAt   DateTime    @default(now())

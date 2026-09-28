@@ -4,125 +4,314 @@ import { sendSuccess } from '../../utils/response';
 import { AppError } from '../../middleware/error.middleware';
 import { getPagination, paginate } from '../../utils/pagination';
 
-export const getSales = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getSales = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    const { customerId, branchId, startDate, endDate, paymentStatus } = req.query;
+    const { customerId, branchId, startDate, endDate, paymentStatus } =
+      req.query;
     const { skip, take, page, limit } = getPagination(req);
-    const where = {
+    const where: Record<string, unknown> = {
       ...(customerId && { customerId: parseInt(String(customerId)) }),
       ...(branchId && { branchId: parseInt(String(branchId)) }),
-      ...(paymentStatus && { paymentStatus: String(paymentStatus) as any }),
-      ...(startDate && endDate && { date: { gte: new Date(String(startDate)), lte: new Date(String(endDate)) } }),
+      ...(paymentStatus && { paymentStatus: String(paymentStatus) as never }),
+      ...(startDate &&
+        endDate && {
+          date: {
+            gte: new Date(String(startDate)),
+            lte: new Date(String(endDate)),
+          },
+        }),
     };
     const [data, total] = await Promise.all([
       prisma.sale.findMany({
-        where, skip, take, orderBy: { date: 'desc' },
-        include: { customer: true, branch: true, items: { include: { product: true } } },
+        where,
+        skip,
+        take,
+        orderBy: { date: 'desc' },
+        include: {
+          customer: true,
+          branch: true,
+          items: { include: { product: true } },
+        },
       }),
       prisma.sale.count({ where }),
     ]);
     sendSuccess(res, paginate(data, total, page, limit));
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const createSale = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const createSale = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    const { customerId, branchId, items, totalAmount, discount, dueAmount, paymentStatus } = req.body;
+    const {
+      customerId,
+      branchId,
+      items,
+      totalAmount,
+      discount,
+      vat,
+      dueAmount,
+      paymentStatus,
+      notes,
+    } = req.body;
+    const count = await prisma.sale.count();
+    const invoiceNo = `SAL-${String(count + 1).padStart(6, '0')}`;
 
     const sale = await prisma.$transaction(async (tx) => {
       // Check stock availability
       for (const item of items) {
-        const stock = await tx.stock.findUnique({
-          where: { productId_branchId: { productId: item.productId, branchId } },
+        const stock = await tx.stock.findFirst({
+          where: { productId: item.productId, branchId, warehouseId: null },
         });
         if (!stock || stock.quantity < item.quantity) {
-          throw new AppError(`Insufficient stock for product ID ${item.productId}`, 400);
+          throw new AppError(
+            `Insufficient stock for product ID ${item.productId}`,
+            400
+          );
         }
       }
       const s = await tx.sale.create({
-        data: { customerId, branchId, totalAmount, discount, dueAmount, paymentStatus, items: { create: items } },
+        data: {
+          invoiceNo,
+          customerId,
+          branchId,
+          totalAmount,
+          discount: discount || 0,
+          vat: vat || 0,
+          dueAmount,
+          paymentStatus,
+          notes,
+          items: { create: items },
+        },
         include: { items: { include: { product: true } }, customer: true },
       });
       // Deduct stock
       for (const item of items) {
-        await tx.stock.update({
-          where: { productId_branchId: { productId: item.productId, branchId } },
-          data: { quantity: { decrement: item.quantity } },
+        const stock = await tx.stock.findFirst({
+          where: { productId: item.productId, branchId, warehouseId: null },
         });
+        if (stock)
+          await tx.stock.update({
+            where: { id: stock.id },
+            data: { quantity: { decrement: item.quantity } },
+          });
       }
-      // Update customer dues
+      // Update customer dues & ledger
       if (customerId && dueAmount > 0) {
-        await tx.customer.update({ where: { id: customerId }, data: { dues: { increment: dueAmount } } });
-        await tx.ledger.create({ data: { customerId, type: 'DEBIT', amount: totalAmount, notes: `Sale #${s.id}` } });
+        await tx.customer.update({
+          where: { id: customerId },
+          data: { dues: { increment: dueAmount } },
+        });
+        await tx.ledger.create({
+          data: {
+            customerId,
+            type: 'DEBIT',
+            amount: totalAmount,
+            description: `Sale #${s.invoiceNo}`,
+            refType: 'sale',
+            refId: s.id,
+          },
+        });
       }
       return s;
     });
     sendSuccess(res, sale, 201);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const getSale = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getSale = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const s = await prisma.sale.findUnique({
       where: { id: parseInt(req.params.id) },
-      include: { customer: true, branch: true, items: { include: { product: true } }, payments: true },
+      include: {
+        customer: true,
+        branch: true,
+        items: { include: { product: true } },
+        payments: true,
+        returns: { include: { items: { include: { product: true } } } },
+      },
     });
     if (!s) throw new AppError('Sale not found', 404);
     sendSuccess(res, s);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const makeSalePayment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const updateSale = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const s = await prisma.sale.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
+    if (!s) throw new AppError('Sale not found', 404);
+    sendSuccess(
+      res,
+      await prisma.sale.update({ where: { id: s.id }, data: req.body })
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const makeSalePayment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const saleId = parseInt(req.params.id);
     const { amount, paymentType, notes } = req.body;
     const sale = await prisma.sale.findUnique({ where: { id: saleId } });
     if (!sale) throw new AppError('Sale not found', 404);
-    if (amount > sale.dueAmount) throw new AppError('Payment exceeds due amount', 400);
+    if (amount > sale.dueAmount)
+      throw new AppError('Payment exceeds due amount', 400);
 
     const newDue = sale.dueAmount - amount;
-    await prisma.$transaction([
-      prisma.payment.create({ data: { saleId, customerId: sale.customerId, amount, paymentType, notes } }),
-      prisma.sale.update({
-        where: { id: saleId },
-        data: { dueAmount: newDue, paymentStatus: newDue <= 0 ? 'PAID' : 'PARTIAL' },
-      }),
-      ...(sale.customerId ? [
-        prisma.customer.update({ where: { id: sale.customerId }, data: { dues: { decrement: amount } } }),
-        prisma.ledger.create({ data: { customerId: sale.customerId, type: 'CREDIT', amount, notes: `Payment for Sale #${saleId}` } }),
-      ] : []),
-    ]);
+    const paymentOp = prisma.payment.create({
+      data: { saleId, customerId: sale.customerId, amount, paymentType, notes },
+    });
+    const saleUpdateOp = prisma.sale.update({
+      where: { id: saleId },
+      data: {
+        dueAmount: newDue,
+        paymentStatus: newDue <= 0 ? 'PAID' : 'PARTIAL',
+      },
+    });
+
+    if (sale.customerId) {
+      await prisma.$transaction([
+        paymentOp,
+        saleUpdateOp,
+        prisma.customer.update({
+          where: { id: sale.customerId },
+          data: { dues: { decrement: amount } },
+        }),
+        prisma.ledger.create({
+          data: {
+            customerId: sale.customerId,
+            type: 'CREDIT',
+            amount,
+            description: `Payment for Sale #${sale.invoiceNo}`,
+            refType: 'payment',
+            refId: saleId,
+          },
+        }),
+      ]);
+    } else {
+      await prisma.$transaction([paymentOp, saleUpdateOp]);
+    }
     sendSuccess(res, { message: 'Payment recorded', remainingDue: newDue });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const returnSale = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const returnSale = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const saleId = parseInt(req.params.id);
-    const { items } = req.body;
-    const sale = await prisma.sale.findUnique({ where: { id: saleId }, include: { items: true } });
+    const { items, reason } = req.body;
+    const sale = await prisma.sale.findUnique({
+      where: { id: saleId },
+      include: { items: true },
+    });
     if (!sale) throw new AppError('Sale not found', 404);
 
     await prisma.$transaction(async (tx) => {
-      for (const ret of items) {
-        const saleItem = sale.items.find(i => i.id === ret.saleItemId);
-        if (!saleItem) throw new AppError(`Item ${ret.saleItemId} not found`, 404);
-        if (ret.quantity > saleItem.quantity) throw new AppError('Return quantity exceeds sold quantity', 400);
+      let returnTotal = 0;
+      const returnItems: {
+        productId: number;
+        quantity: number;
+        rate: number;
+      }[] = [];
 
-        await tx.stock.update({
-          where: { productId_branchId: { productId: saleItem.productId, branchId: sale.branchId } },
-          data: { quantity: { increment: ret.quantity } },
+      for (const ret of items) {
+        const saleItem = sale.items.find((i) => i.id === ret.saleItemId);
+        if (!saleItem)
+          throw new AppError(`Item ${ret.saleItemId} not found`, 404);
+        if (ret.quantity > saleItem.quantity)
+          throw new AppError('Return quantity exceeds sold quantity', 400);
+
+        const stockEntry = await tx.stock.findFirst({
+          where: {
+            productId: saleItem.productId,
+            branchId: sale.branchId,
+            warehouseId: null,
+          },
         });
-        if (ret.quantity === saleItem.quantity) {
-          await tx.saleItem.delete({ where: { id: saleItem.id } });
-        } else {
-          await tx.saleItem.update({ where: { id: saleItem.id }, data: { quantity: { decrement: ret.quantity } } });
+        if (stockEntry) {
+          await tx.stock.update({
+            where: { id: stockEntry.id },
+            data: { quantity: { increment: ret.quantity } },
+          });
         }
+        returnTotal += saleItem.rate * ret.quantity;
+        returnItems.push({
+          productId: saleItem.productId,
+          quantity: ret.quantity,
+          rate: saleItem.rate,
+        });
       }
-      const remaining = await tx.saleItem.findMany({ where: { saleId } });
-      const newTotal = remaining.reduce((sum, i) => sum + i.rate * i.quantity - i.discount, 0);
-      await tx.sale.update({ where: { id: saleId }, data: { totalAmount: newTotal } });
+      await tx.saleReturn.create({
+        data: {
+          saleId,
+          totalAmount: returnTotal,
+          reason,
+          items: { create: returnItems },
+        },
+      });
+      // Restore customer dues if applicable
+      if (sale.customerId && returnTotal > 0) {
+        await tx.customer.update({
+          where: { id: sale.customerId },
+          data: { dues: { decrement: returnTotal } },
+        });
+      }
     });
     sendSuccess(res, { message: 'Sale return processed' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getSaleReturns = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    sendSuccess(
+      res,
+      await prisma.saleReturn.findMany({
+        include: {
+          sale: { include: { customer: true } },
+          items: { include: { product: true } },
+        },
+        orderBy: { date: 'desc' },
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
 };
