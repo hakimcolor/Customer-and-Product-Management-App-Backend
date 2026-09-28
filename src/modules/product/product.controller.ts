@@ -677,3 +677,21 @@ export const getStockAdjustments = async (
     next(err);
   }
 };
+
+export const uploadProductImage = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const productId = parseInt(req.params.id);
+    const image = (req as Request & { file?: Express.Multer.File }).file?.path;
+    if (!image) throw new AppError('No image uploaded', 400);
+    sendSuccess(
+      res,
+      await prisma.product.update({ where: { id: productId }, data: { image } })
+    );
+  } catch (err) {
+    next(err);
+  }
+};

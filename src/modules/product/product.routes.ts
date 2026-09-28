@@ -31,6 +31,7 @@ import {
   recordDamage,
   getDamages,
   getStockAdjustments,
+  uploadProductImage,
 } from './product.controller';
 import { authenticate, authorize } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
@@ -42,6 +43,7 @@ import {
   stockTransferSchema,
   damageSchema,
 } from './product.validator';
+import { productImageUpload } from '../../utils/upload';
 
 const router = Router();
 router.use(authenticate);
@@ -105,13 +107,17 @@ router.post(
   validate(openingStockSchema),
   setOpeningStock
 );
-router.post('/stock/adjust', authorize('ADMIN', 'MANAGER'), adjustStock);
+router.post(
+  '/stock/adjust',
+  authorize('ADMIN', 'MANAGER', 'INVENTORY_MANAGER'),
+  adjustStock
+);
 router.get('/stock/adjustments', getStockAdjustments);
 router.get('/stock/alerts', getStockAlerts);
 router.get('/stock/transfers', getStockTransfers);
 router.post(
   '/stock/transfers',
-  authorize('ADMIN', 'MANAGER'),
+  authorize('ADMIN', 'MANAGER', 'INVENTORY_MANAGER'),
   validate(stockTransferSchema),
   transferStock
 );
@@ -123,7 +129,7 @@ router.patch(
 router.get('/damages', getDamages);
 router.post(
   '/damages',
-  authorize('ADMIN', 'MANAGER'),
+  authorize('ADMIN', 'MANAGER', 'INVENTORY_MANAGER'),
   validate(damageSchema),
   recordDamage
 );
@@ -140,5 +146,11 @@ router.get('/:id', getProduct);
 router.put('/:id', authorize('ADMIN', 'MANAGER'), updateProduct);
 router.delete('/:id', authorize('ADMIN'), deleteProduct);
 router.get('/:id/stock', getProductStock);
+router.post(
+  '/:id/image',
+  authorize('ADMIN', 'MANAGER'),
+  productImageUpload.single('image'),
+  uploadProductImage
+);
 
 export default router;

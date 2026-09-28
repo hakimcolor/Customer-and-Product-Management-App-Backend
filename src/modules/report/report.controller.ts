@@ -357,44 +357,87 @@ export const dashboardStats = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { branchId } = req.query;
+    const { branchId, period = 'today' } = req.query;
     const bw = branchId ? { branchId: parseInt(String(branchId)) } : {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    const now = new Date();
+    let start = new Date();
+    let end = new Date(now);
+
+    if (period === 'today') {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (period === 'yesterday') {
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start);
+      end.setHours(23, 59, 59, 999);
+    } else if (period === 'week') {
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+    } else if (period === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (period === 'last_month') {
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0);
+      end.setHours(23, 59, 59, 999);
+    }
+
+    const dateWhere = { gte: start, lte: end };
 
     const [
-      todaySales,
-      todayPurchases,
+      periodSales,
+      periodPurchases,
+      periodExpenses,
+      paymentsReceived,
+      paymentsMade,
       totalCustomerDues,
       totalSupplierDues,
-      totalStockValue,
-      lowStockCount,
+      cashBalance,
+      bankBalance,
+      allStocks,
       recentSales,
       recentPurchases,
+      recentPayments,
+      recentExpenses,
+      branchSales,
     ] = await Promise.all([
       prisma.sale.aggregate({
-        where: { date: { gte: today, lte: todayEnd }, ...bw },
+        where: { date: dateWhere, ...bw },
         _sum: { totalAmount: true },
         _count: true,
       }),
       prisma.purchase.aggregate({
-        where: { date: { gte: today, lte: todayEnd }, ...bw },
+        where: { date: dateWhere, ...bw },
         _sum: { totalAmount: true },
         _count: true,
       }),
+      prisma.expense.aggregate({
+        where: { date: dateWhere },
+        _sum: { amount: true },
+      }),
+      prisma.payment.aggregate({
+        where: { date: dateWhere, customerId: { not: null } },
+        _sum: { amount: true },
+      }),
+      prisma.payment.aggregate({
+        where: { date: dateWhere, supplierId: { not: null } },
+        _sum: { amount: true },
+      }),
       prisma.customer.aggregate({ _sum: { dues: true } }),
       prisma.supplier.aggregate({ _sum: { dues: true } }),
-      prisma.stock
-        .findMany({ include: { product: true } })
-        .then((stocks) =>
-          stocks.reduce(
-            (sum, s) => sum + s.quantity * s.product.purchasePrice,
-            0
-          )
-        ),
-      prisma.stock.count({ where: { product: { stocks: { some: {} } } } }),
+      prisma.account.aggregate({
+        where: { accountType: 'CASH', status: true },
+        _sum: { balance: true },
+      }),
+      prisma.account.aggregate({
+        where: { accountType: 'BANK', status: true },
+        _sum: { balance: true },
+      }),
+      prisma.stock.findMany({
+        include: {
+          product: { select: { purchasePrice: true, alertQuantity: true } },
+        },
+      }),
       prisma.sale.findMany({
         where: { ...bw },
         include: { customer: true },
@@ -407,16 +450,201 @@ export const dashboardStats = async (
         orderBy: { date: 'desc' },
         take: 5,
       }),
+      prisma.payment.findMany({
+        include: { customer: true, supplier: true },
+        orderBy: { date: 'desc' },
+        take: 5,
+      }),
+      prisma.expense.findMany({ orderBy: { date: 'desc' }, take: 5 }),
+      prisma.sale.groupBy({
+        by: ['branchId'],
+        where: {
+          date: { gte: new Date(now.getFullYear(), now.getMonth(), 1) },
+        },
+        _sum: { totalAmount: true },
+        _count: true,
+      }),
     ]);
 
+    const totalStockValue = allStocks.reduce(
+      (sum, s) => sum + s.quantity * s.product.purchasePrice,
+      0
+    );
+    const lowStockCount = allStocks.filter(
+      (s) => s.quantity > 0 && s.quantity <= s.product.alertQuantity
+    ).length;
+    const outOfStockCount = allStocks.filter((s) => s.quantity <= 0).length;
+    const revenue = periodSales._sum.totalAmount || 0;
+    const cogs = periodPurchases._sum.totalAmount || 0;
+    const expenses = periodExpenses._sum.amount || 0;
+
     sendSuccess(res, {
-      today: { sales: todaySales, purchases: todayPurchases },
-      totals: {
-        customerDues: totalCustomerDues._sum.dues || 0,
-        supplierDues: totalSupplierDues._sum.dues || 0,
-        stockValue: totalStockValue,
+      period,
+      summary: {
+        totalSales: revenue,
+        salesCount: periodSales._count,
+        totalPurchases: cogs,
+        purchasesCount: periodPurchases._count,
+        totalExpenses: expenses,
+        receivedPayments: paymentsReceived._sum.amount || 0,
+        supplierPayments: paymentsMade._sum.amount || 0,
+        grossProfit: revenue - cogs,
+        netProfit: revenue - cogs - expenses,
       },
-      recent: { sales: recentSales, purchases: recentPurchases },
+      balances: {
+        totalCustomerDues: totalCustomerDues._sum.dues || 0,
+        totalSupplierDues: totalSupplierDues._sum.dues || 0,
+        totalCashBalance: cashBalance._sum.balance || 0,
+        totalBankBalance: bankBalance._sum.balance || 0,
+      },
+      inventory: { totalStockValue, lowStockCount, outOfStockCount },
+      recent: {
+        sales: recentSales,
+        purchases: recentPurchases,
+        payments: recentPayments,
+        expenses: recentExpenses,
+      },
+      branchSales,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const productSalesReport = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { startDate, endDate, branchId, categoryId } = req.query;
+    const dr = dateRange(String(startDate || ''), String(endDate || ''));
+    const items = await prisma.saleItem.groupBy({
+      by: ['productId'],
+      where: {
+        ...(dr && { sale: { date: dr } }),
+        ...(branchId && { sale: { branchId: parseInt(String(branchId)) } }),
+      },
+      _sum: { quantity: true, rate: true },
+      _count: true,
+    });
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: items.map((i) => i.productId) },
+        ...(categoryId && { categoryId: parseInt(String(categoryId)) }),
+      },
+      include: { category: true, brand: true },
+    });
+    sendSuccess(
+      res,
+      items.map((i) => ({
+        ...i,
+        product: products.find((p) => p.id === i.productId),
+      }))
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const damageReport = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { startDate, endDate, branchId } = req.query;
+    const dr = dateRange(String(startDate || ''), String(endDate || ''));
+    const damages = await prisma.damage.findMany({
+      where: {
+        ...(dr && { date: dr }),
+        ...(branchId && { branchId: parseInt(String(branchId)) }),
+      },
+      include: { product: true, branch: true },
+      orderBy: { date: 'desc' },
+    });
+    const totalLoss = damages.reduce((sum, d) => sum + d.lossAmount, 0);
+    sendSuccess(res, { totalLoss, count: damages.length, data: damages });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const transferReport = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { startDate, endDate, branchId, status } = req.query;
+    const dr = dateRange(String(startDate || ''), String(endDate || ''));
+    sendSuccess(
+      res,
+      await prisma.stockTransfer.findMany({
+        where: {
+          ...(dr && { requestedAt: dr }),
+          ...(status && { status: String(status) as never }),
+          ...(branchId && {
+            OR: [
+              { fromBranchId: parseInt(String(branchId)) },
+              { toBranchId: parseInt(String(branchId)) },
+            ],
+          }),
+        },
+        include: {
+          fromBranch: true,
+          toBranch: true,
+          items: { include: { product: true } },
+        },
+        orderBy: { requestedAt: 'desc' },
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const cashFlowReport = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { startDate, endDate } = req.query;
+    const dr = dateRange(String(startDate || ''), String(endDate || ''));
+    const [paymentsIn, paymentsOut, expenses, loanPayments] = await Promise.all(
+      [
+        prisma.payment.findMany({
+          where: { ...(dr && { date: dr }), customerId: { not: null } },
+          orderBy: { date: 'asc' },
+        }),
+        prisma.payment.findMany({
+          where: { ...(dr && { date: dr }), supplierId: { not: null } },
+          orderBy: { date: 'asc' },
+        }),
+        prisma.expense.findMany({
+          where: { ...(dr && { date: dr }) },
+          orderBy: { date: 'asc' },
+        }),
+        prisma.loanPayment.findMany({
+          where: { ...(dr && { date: dr }) },
+          include: { loan: true },
+          orderBy: { date: 'asc' },
+        }),
+      ]
+    );
+    const totalIn = paymentsIn.reduce((s, p) => s + p.amount, 0);
+    const totalOut =
+      paymentsOut.reduce((s, p) => s + p.amount, 0) +
+      expenses.reduce((s, e) => s + e.amount, 0);
+    sendSuccess(res, {
+      totalInflow: totalIn,
+      totalOutflow: totalOut,
+      netCashFlow: totalIn - totalOut,
+      paymentsReceived: paymentsIn,
+      paymentsMade: paymentsOut,
+      expenses,
+      loanPayments,
     });
   } catch (err) {
     next(err);
