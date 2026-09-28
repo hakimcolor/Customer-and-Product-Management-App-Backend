@@ -61,6 +61,11 @@ app.use('/api/v1/auth/forgot-password', authLimiter);
 // ── Routes ─────────────────────────────────────────────────────────
 const API = '/api/v1';
 
+// Health check — no auth required
+app.get(`${API}/health`, (_req, res) =>
+  res.json({ status: 'OK', timestamp: new Date() })
+);
+
 app.use(`${API}/auth`, authRoutes);
 app.use(`${API}/users`, userRoutes);
 app.use(`${API}/branches`, branchRoutes);
@@ -72,7 +77,6 @@ app.use(`${API}/purchases`, purchaseRoutes);
 app.use(`${API}/sales`, saleRoutes);
 app.use(`${API}/payments`, paymentRoutes);
 app.use(`${API}/expenses`, expenseRoutes);
-app.use(`${API}`, loanRoutes); // /api/v1/loans and /api/v1/capital
 app.use(`${API}/accounts`, accountRoutes);
 app.use(`${API}/reports`, reportRoutes);
 app.use(`${API}/sms`, smsRoutes);
@@ -82,11 +86,7 @@ app.use(`${API}/audit`, auditRoutes);
 app.use(`${API}/notifications`, notificationRoutes);
 app.use(`${API}/export`, exportRoutes);
 app.use(`${API}/pos`, posRoutes);
-
-// ── Health check ───────────────────────────────────────────────────
-app.get(`${API}/health`, (_req, res) =>
-  res.json({ status: 'OK', timestamp: new Date() })
-);
+app.use(`${API}`, loanRoutes); // /api/v1/loans and /api/v1/capital — must be last
 
 // ── 404 handler ────────────────────────────────────────────────────
 app.use((_req, res) =>
