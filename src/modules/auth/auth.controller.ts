@@ -7,6 +7,7 @@ import { AppError } from '../../middleware/error.middleware';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { sendEmail } from '../../utils/email';
 import { generateResetToken, hashToken } from '../../utils/token';
+import config from '../../config/config';
 
 // ── Login ─────────────────────────────────────────────────────
 export const login = async (
@@ -47,13 +48,13 @@ export const login = async (
       data: { userId: user.id, action: 'LOGIN', module: 'auth', ip, device },
     });
 
-    const secret = process.env.JWT_SECRET as string;
-    const exp = (process.env.JWT_EXPIRES_IN ||
-      '7d') as `${number}${'s' | 'm' | 'h' | 'd' | 'w'}`;
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      secret,
-      { expiresIn: exp }
+      config.jwt.secret,
+      {
+        expiresIn: config.jwt
+          .expiresIn as `${number}${'s' | 'm' | 'h' | 'd' | 'w'}`,
+      }
     );
 
     sendSuccess(res, {
@@ -121,7 +122,7 @@ export const forgotPassword = async (
       data: { resetToken: hashedToken, resetTokenExp: expiry },
     });
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${rawToken}`;
+    const resetUrl = `${config.frontendUrl}/reset-password?token=${rawToken}`;
     await sendEmail(
       user.email,
       'Password Reset Request',

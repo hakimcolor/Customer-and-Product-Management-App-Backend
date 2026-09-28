@@ -1,12 +1,13 @@
 import nodemailer from 'nodemailer';
+import config from '../config/config';
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
+  host: config.smtp.host,
+  port: config.smtp.port,
   secure: false,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: config.smtp.user,
+    pass: config.smtp.pass,
   },
 });
 
@@ -17,7 +18,7 @@ export const sendEmail = async (
 ): Promise<boolean> => {
   try {
     await transporter.sendMail({
-      from: `"${process.env.COMPANY_NAME || 'ERP System'}" <${process.env.SMTP_USER}>`,
+      from: `"${config.companyName}" <${config.smtp.user}>`,
       to,
       subject,
       html,
