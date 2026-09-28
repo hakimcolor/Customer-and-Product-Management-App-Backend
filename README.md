@@ -1,127 +1,61 @@
-# Customer & Product Management App — Backend
+# Sales, Inventory & Accounts ERP — Backend
 
-Sales, Inventory, and Accounts Management System built with **Node.js**, **TypeScript**, **Express**, and **PostgreSQL (Prisma)**.
+A complete, production-ready ERP backend built with Node.js, TypeScript, Express, PostgreSQL, and Prisma ORM.
 
----
-
-## Tech Stack
-
-- Node.js + TypeScript
-- Express.js
-- PostgreSQL
-- Prisma ORM
-- JWT Authentication
-- bcryptjs
-- Multer (file uploads)
+See [backend.md](./backend.md) for full documentation.
 
 ---
 
-## Project Structure
+## Quick Start
 
-```
-backend/
-├── prisma/
-│   └── schema.prisma        # Full DB schema (all entities)
-├── src/
-│   ├── controllers/         # Business logic per module
-│   ├── routes/              # Express route definitions
-│   ├── middleware/          # Auth middleware (JWT)
-│   ├── utils/               # Prisma client singleton
-│   ├── app.ts               # Express app setup
-│   └── server.ts            # Server entry point
-├── .env.example             # Environment variables template
-├── package.json
-└── tsconfig.json
-```
-
----
-
-## Setup
-
-1. Clone the repo and install dependencies:
 ```bash
+# Install dependencies
 npm install
-```
 
-2. Copy `.env.example` to `.env` and update your PostgreSQL credentials:
-```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/sales_inventory_db?schema=public"
-JWT_SECRET="your_secret_key"
-PORT=5000
-```
+# Copy environment template
+cp .env.example .env
+# Edit .env with your database credentials
 
-3. Run database migrations:
-```bash
-npx prisma migrate dev --name init
-```
+# Push schema to database
+npm run db:push
 
-4. Start development server:
-```bash
+# Seed initial data
+npm run db:seed
+
+# Start development server
 npm run dev
 ```
 
----
+Server runs at `http://localhost:5000`
 
-## API Modules
-
-| Module | Base URL |
-|---|---|
-| Auth | `/api/auth` |
-| Users & Roles | `/api/users` |
-| Branches | `/api/branches` |
-| Customers | `/api/customers` |
-| Suppliers | `/api/suppliers` |
-| Products | `/api/products` |
-| Categories | `/api/products/categories` |
-| Brands | `/api/products/brands` |
-| Stock | `/api/products/stock/*` |
-| Purchases | `/api/purchases` |
-| Sales | `/api/sales` |
-| Payments | `/api/payments` |
-| Expenses | `/api/expenses` |
-| Loans | `/api/loans` |
-| Capital | `/api/capital` |
-| Reports | `/api/reports` |
-| SMS | `/api/sms` |
-
----
-
-## Progress Tracker
-
-### ✅ Done
-- [x] Project setup (Node.js + TypeScript + Express)
-- [x] Prisma schema — all 18 entities (User, Branch, Customer, Supplier, Product, Stock, Purchase, Sale, Payment, Expense, Loan, Capital, Damage, Ledger, StockTransfer, SMSLog, Category, Brand)
-- [x] JWT Authentication middleware
-- [x] All Controllers (auth, user, branch, customer, supplier, product, category, purchase, sale, payment, expense, loan, report, sms, print, return)
-- [x] All Routes wired up
-- [x] Role-based authorization (ADMIN / MANAGER / ACCOUNTANT)
-- [x] Stock tracking on purchase/sale transactions
-- [x] Stock transfer between branches
-- [x] Reporting endpoints (daily summary, profit, dues, stock alerts, best sellers)
-- [x] File upload for expense vouchers (multer)
-- [x] Input validation with Zod on all write endpoints
-- [x] Global error handling middleware
-- [x] Pagination on all list endpoints (`?page=1&limit=20`)
-- [x] Sale return endpoint — restores stock automatically
-- [x] Purchase return endpoint — reduces stock automatically
-- [x] Print invoice endpoint (`GET /api/print/invoice/:saleId`)
-- [x] Barcode data endpoint (`GET /api/print/barcodes`)
-- [x] Database seed file (admin user, branches, categories, brands, role permissions)
-- [x] GitHub push
-
-### 🔜 Next Steps
-- [ ] Connect to PostgreSQL and run `npm run db:migrate`
-- [ ] Run seed: `npm run db:seed`
-- [ ] SMS provider integration (Twilio / SSL Wireless — stub ready in sms.controller.ts)
+Default admin: `admin@example.com` / `admin123`
 
 ---
 
 ## Scripts
 
 ```bash
-npm run dev          # Start dev server with nodemon
-npm run build        # Compile TypeScript
-npm run db:migrate   # Run Prisma migrations
-npm run db:seed      # Seed initial data (admin user, categories, brands)
-npm run db:studio    # Open Prisma Studio
+npm run dev           # Start dev server with hot reload
+npm run build         # Compile TypeScript to JavaScript
+npm run start         # Run compiled server
+npm run db:push       # Push schema changes to database
+npm run db:migrate    # Run database migrations
+npm run db:seed       # Seed initial data
+npm run db:studio     # Open Prisma Studio
+npm run db:generate   # Regenerate Prisma client
 ```
+
+---
+
+## Tech Stack
+
+- Runtime: Node.js v20+
+- Language: TypeScript 5
+- Framework: Express.js 4
+- Database: PostgreSQL (Prisma Postgres cloud)
+- ORM: Prisma 5
+- Auth: JWT
+- Validation: Zod v4
+- File Upload: Multer
+- Email: Nodemailer
+- Rate Limiting: express-rate-limit

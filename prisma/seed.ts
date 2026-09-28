@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('[SEED] Seeding database...');
 
   // Main branch
   const branch = await prisma.branch.upsert({
@@ -186,7 +186,7 @@ async function main() {
     });
   }
 
-  console.log('✅ Seed complete!');
+  console.log('[SEED] Done.');
   console.log(`   Branch    : ${branch.name}`);
   console.log(`   Admin     : ${admin.email} / password: admin123`);
   console.log(`   Units     : ${units.length} seeded`);
