@@ -1,7 +1,32 @@
+# Dependencies
 node_modules/
-dist/
-.env
-*.log
-uploads/
-nul
 
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Uploads (stored on server, not in git)
+uploads/*
+!uploads/.gitkeep
+
+# AI agent skill folders
+.agents/
+.claude/
+.cursor/
+.devin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
