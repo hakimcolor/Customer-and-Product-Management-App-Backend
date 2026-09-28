@@ -4,6 +4,7 @@ import prisma from '../../utils/prisma';
 import { sendSuccess, sendError } from '../../utils/response';
 import { AppError } from '../../middleware/error.middleware';
 import { getPagination, paginate } from '../../utils/pagination';
+import { fileToUrl } from '../../utils/upload';
 
 // GET /users — list all users (admin only)
 export const getUsers = async (
@@ -209,9 +210,9 @@ export const uploadProfilePicture = async (
 ): Promise<void> => {
   try {
     const id = parseInt(req.params.id);
-    const profileImage = (req as Request & { file?: Express.Multer.File }).file
-      ?.path;
-    if (!profileImage) throw new AppError('No image uploaded', 400);
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) throw new AppError('No image uploaded', 400);
+    const profileImage = fileToUrl(file.path);
     sendSuccess(
       res,
       await prisma.user.update({

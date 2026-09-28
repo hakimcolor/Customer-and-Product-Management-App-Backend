@@ -3,6 +3,7 @@ import prisma from '../../utils/prisma';
 import { sendSuccess } from '../../utils/response';
 import { AppError } from '../../middleware/error.middleware';
 import { getPagination, paginate } from '../../utils/pagination';
+import { fileToUrl } from '../../utils/upload';
 
 export const getExpenses = async (
   req: Request,
@@ -63,8 +64,8 @@ export const createExpense = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const voucherImage =
-      (req as Request & { file?: Express.Multer.File }).file?.path || undefined;
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    const voucherImage = file ? fileToUrl(file.path) : undefined;
     const data = { ...req.body, ...(voucherImage && { voucherImage }) };
     sendSuccess(
       res,

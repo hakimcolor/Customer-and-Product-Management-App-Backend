@@ -3,6 +3,7 @@ import prisma from '../../utils/prisma';
 import { sendSuccess } from '../../utils/response';
 import { AppError } from '../../middleware/error.middleware';
 import { getPagination, paginate } from '../../utils/pagination';
+import { fileToUrl } from '../../utils/upload';
 
 // ── Categories ───────────────────────────────────────────────
 export const getCategories = async (
@@ -685,8 +686,9 @@ export const uploadProductImage = async (
 ): Promise<void> => {
   try {
     const productId = parseInt(req.params.id);
-    const image = (req as Request & { file?: Express.Multer.File }).file?.path;
-    if (!image) throw new AppError('No image uploaded', 400);
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) throw new AppError('No image uploaded', 400);
+    const image = fileToUrl(file.path);
     sendSuccess(
       res,
       await prisma.product.update({ where: { id: productId }, data: { image } })
