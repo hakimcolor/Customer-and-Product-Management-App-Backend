@@ -66,6 +66,40 @@ app.get(`${API}/health`, (_req, res) =>
   res.json({ status: 'OK', timestamp: new Date() })
 );
 
+// Root route
+app.get('/', (_req, res) =>
+  res.json({
+    success: true,
+    message: 'Sales & Inventory ERP API',
+    version: 'v1',
+    docs: `http://localhost:${process.env.PORT || 5000}/api/v1/health`,
+    endpoints: {
+      auth: '/api/v1/auth',
+      users: '/api/v1/users',
+      branches: '/api/v1/branches',
+      warehouses: '/api/v1/warehouses',
+      customers: '/api/v1/customers',
+      suppliers: '/api/v1/suppliers',
+      products: '/api/v1/products',
+      purchases: '/api/v1/purchases',
+      sales: '/api/v1/sales',
+      payments: '/api/v1/payments',
+      expenses: '/api/v1/expenses',
+      loans: '/api/v1/loans',
+      capital: '/api/v1/capital',
+      accounts: '/api/v1/accounts',
+      pos: '/api/v1/pos',
+      reports: '/api/v1/reports',
+      export: '/api/v1/export',
+      sms: '/api/v1/sms',
+      print: '/api/v1/print',
+      settings: '/api/v1/settings',
+      audit: '/api/v1/audit',
+      notifications: '/api/v1/notifications',
+    },
+  })
+);
+
 app.use(`${API}/auth`, authRoutes);
 app.use(`${API}/users`, userRoutes);
 app.use(`${API}/branches`, branchRoutes);
