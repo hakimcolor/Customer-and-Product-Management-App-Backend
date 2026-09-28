@@ -81,3 +81,56 @@ export const getSMSLogs = async (
     next(err);
   }
 };
+
+export const sendDueReminders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { message, type = 'customer', minDue = 0 } = req.body;
+    // Get customers or suppliers with dues above threshold
+    let contacts: { phone: string | null; name: string; dues: number }[] = [];
+    if (type === 'customer') {
+      contacts = await prisma.customer.findMany({
+        where: {
+          dues: { gt: Number(minDue) },
+          phone: { not: null },
+          status: true,
+        },
+        select: { phone: true, name: true, dues: true },
+      });
+    } else {
+      contacts = await prisma.supplier.findMany({
+        where: {
+          dues: { gt: Number(minDue) },
+          phone: { not: null },
+          status: true,
+        },
+        select: { phone: true, name: true, dues: true },
+      });
+    }
+    const logs = await Promise.all(
+      contacts
+        .filter((c) => c.phone)
+        .map(async (c) => {
+          const smsText =
+            message ||
+            `Dear ${c.name}, your outstanding due is ${c.dues}. Please clear at your earliest. Thank you.`;
+          const result = await sendSMSProvider(c.phone!, smsText);
+          return prisma.sMSLog.create({
+            data: {
+              to: c.phone!,
+              message: smsText,
+              sentStatus: result.success,
+              providerResp: result.response,
+              sentBy: 'system',
+            },
+          });
+        })
+    );
+    sendSuccess(res, { sent: logs.length, recipients: contacts.length }, 201);
+  } catch (err) {
+    next(err);
+  }
+};

@@ -3,6 +3,7 @@ import prisma from '../../utils/prisma';
 import { sendSuccess } from '../../utils/response';
 import { AppError } from '../../middleware/error.middleware';
 import { getPagination, paginate } from '../../utils/pagination';
+import { recordStockMovement } from '../../utils/stockMovement';
 
 export const getPurchases = async (
   req: Request,
@@ -81,7 +82,7 @@ export const createPurchase = async (
         },
         include: { items: { include: { product: true } }, supplier: true },
       });
-      // Update stock for each item
+      // Update stock for each item + record movement
       for (const item of items) {
         const existing = await tx.stock.findFirst({
           where: { productId: item.productId, branchId, warehouseId: null },
@@ -91,6 +92,15 @@ export const createPurchase = async (
             where: { id: existing.id },
             data: { quantity: { increment: item.quantity } },
           });
+          await recordStockMovement(tx, {
+            productId: item.productId,
+            branchId,
+            type: 'PURCHASE',
+            quantity: item.quantity,
+            before: existing.quantity,
+            refType: 'purchase',
+            refId: p.id,
+          });
         } else {
           await tx.stock.create({
             data: {
@@ -99,6 +109,15 @@ export const createPurchase = async (
               quantity: item.quantity,
               openingStock: 0,
             },
+          });
+          await recordStockMovement(tx, {
+            productId: item.productId,
+            branchId,
+            type: 'PURCHASE',
+            quantity: item.quantity,
+            before: 0,
+            refType: 'purchase',
+            refId: p.id,
           });
         }
       }

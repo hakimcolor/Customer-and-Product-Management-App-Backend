@@ -4,6 +4,7 @@ import { sendSuccess } from '../../utils/response';
 import { AppError } from '../../middleware/error.middleware';
 import { getPagination, paginate } from '../../utils/pagination';
 import { fileToUrl } from '../../utils/upload';
+import { recordStockMovement } from '../../utils/stockMovement';
 
 // ── Categories ───────────────────────────────────────────────
 export const getCategories = async (
@@ -631,6 +632,17 @@ export const recordDamage = async (
       prisma.stock.update({
         where: { id: existing.id },
         data: { quantity: { decrement: quantity } },
+      }),
+      prisma.stockMovement.create({
+        data: {
+          productId,
+          branchId,
+          type: 'DAMAGE',
+          quantity: -quantity,
+          before: existing.quantity,
+          after: existing.quantity - quantity,
+          notes: reason,
+        },
       }),
     ]);
     sendSuccess(res, damage, 201);

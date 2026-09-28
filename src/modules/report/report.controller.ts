@@ -650,3 +650,93 @@ export const cashFlowReport = async (
     next(err);
   }
 };
+
+export const monthlyChart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { months = '12', branchId } = req.query;
+    const bw = branchId ? { branchId: parseInt(String(branchId)) } : {};
+    const since = new Date();
+    since.setMonth(since.getMonth() - parseInt(String(months)));
+    since.setDate(1);
+    since.setHours(0, 0, 0, 0);
+
+    const [sales, purchases, expenses] = await Promise.all([
+      prisma.sale.groupBy({
+        by: ['date'],
+        where: { date: { gte: since }, ...bw },
+        _sum: { totalAmount: true },
+      }),
+      prisma.purchase.groupBy({
+        by: ['date'],
+        where: { date: { gte: since }, ...bw },
+        _sum: { totalAmount: true },
+      }),
+      prisma.expense.groupBy({
+        by: ['date'],
+        where: { date: { gte: since } },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    // Group by YYYY-MM
+    const group = (
+      rows: {
+        date: Date;
+        _sum: { totalAmount?: number | null; amount?: number | null };
+      }[]
+    ) => {
+      const map: Record<string, number> = {};
+      for (const r of rows) {
+        const key = `${r.date.getFullYear()}-${String(r.date.getMonth() + 1).padStart(2, '0')}`;
+        map[key] = (map[key] || 0) + (r._sum.totalAmount || r._sum.amount || 0);
+      }
+      return map;
+    };
+
+    sendSuccess(res, {
+      monthlySales: group(sales as never),
+      monthlyPurchases: group(purchases as never),
+      monthlyExpenses: group(expenses as never),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const stockMovementHistory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { productId, branchId, type, startDate, endDate } = req.query;
+    const { skip, take, page, limit } = (
+      await import('../../utils/pagination')
+    ).getPagination(req);
+    const dr = dateRange(String(startDate || ''), String(endDate || ''));
+    const where: Record<string, unknown> = {
+      ...(productId && { productId: parseInt(String(productId)) }),
+      ...(branchId && { branchId: parseInt(String(branchId)) }),
+      ...(type && { type: String(type) as never }),
+      ...(dr && { createdAt: dr }),
+    };
+    const [data, total] = await Promise.all([
+      prisma.stockMovement.findMany({
+        where,
+        skip,
+        take,
+        include: { product: true, branch: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.stockMovement.count({ where }),
+    ]);
+    const { paginate } = await import('../../utils/pagination');
+    sendSuccess(res, paginate(data, total, page, limit));
+  } catch (err) {
+    next(err);
+  }
+};

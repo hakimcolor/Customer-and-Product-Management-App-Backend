@@ -15,7 +15,7 @@ export const getLoans = async (
       await prisma.loan.findMany({
         where: {
           ...(loanType && { loanType: String(loanType) as never }),
-          ...(status && { status: String(status) }),
+          ...(status && { status: status as never }),
         },
         include: { payments: true },
         orderBy: { startDate: 'desc' },
@@ -102,14 +102,12 @@ export const makeLoanPayment = async (
       throw new AppError('Payment exceeds remaining balance', 400);
 
     const newBalance = loan.balance - amount;
+    const newStatus = newBalance <= 0 ? 'FULLY_PAID' : 'PARTIALLY_PAID';
     await prisma.$transaction([
       prisma.loanPayment.create({ data: { loanId, amount, notes } }),
       prisma.loan.update({
         where: { id: loanId },
-        data: {
-          balance: newBalance,
-          status: newBalance <= 0 ? 'FULLY_PAID' : 'ACTIVE',
-        },
+        data: { balance: newBalance, status: newStatus },
       }),
     ]);
     sendSuccess(res, {

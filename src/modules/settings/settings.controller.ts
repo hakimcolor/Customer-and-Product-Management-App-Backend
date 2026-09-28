@@ -79,3 +79,27 @@ export const deleteSetting = async (
     next(err);
   }
 };
+
+export const uploadCompanyLogo = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { fileToUrl } = await import('../../utils/upload');
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) {
+      res.status(400).json({ success: false, message: 'No image uploaded' });
+      return;
+    }
+    const logoUrl = fileToUrl(file.path);
+    await prisma.systemSetting.upsert({
+      where: { key: 'company_logo' },
+      update: { value: logoUrl },
+      create: { key: 'company_logo', value: logoUrl, group: 'company' },
+    });
+    sendSuccess(res, { logo: logoUrl });
+  } catch (err) {
+    next(err);
+  }
+};

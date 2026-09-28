@@ -79,6 +79,7 @@ model Product {
   stockAdjustments StockAdjustment[]
   saleReturnItems  SaleReturnItem[]
   purchaseReturnItems PurchaseReturnItem[]
+  stockMovements   StockMovement[]
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -162,4 +163,22 @@ model StockTransferItem {
   createdAt        DateTime      @default(now())
 
   @@map("stock_transfer_items")
+}
+
+model StockMovement {
+  id          Int               @id @default(autoincrement())
+  product     Product           @relation(fields: [productId], references: [id])
+  productId   Int
+  branch      Branch            @relation(fields: [branchId], references: [id])
+  branchId    Int
+  type        StockMovementType
+  quantity    Int               // positive = in, negative = out
+  before      Int               // stock before movement
+  after       Int               // stock after movement
+  refType     String?           // 'sale', 'purchase', 'adjustment', 'damage', 'transfer'
+  refId       Int?
+  notes       String?
+  createdAt   DateTime          @default(now())
+
+  @@map("stock_movements")
 }

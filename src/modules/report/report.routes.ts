@@ -15,6 +15,8 @@ import {
   damageReport,
   transferReport,
   cashFlowReport,
+  monthlyChart,
+  stockMovementHistory,
 } from './report.controller';
 import { authenticate } from '../../middleware/auth.middleware';
 
@@ -29,10 +31,12 @@ router.get('/product-sales', productSalesReport);
 router.get('/customer-dues', customerDues);
 router.get('/supplier-dues', supplierDues);
 router.get('/stock', stockReport);
+router.get('/stock-movements', stockMovementHistory);
 router.get('/damages', damageReport);
 router.get('/transfers', transferReport);
 router.get('/profit', profitReport);
 router.get('/ledger', ledgerReport);
 router.get('/expenses', expenseReport);
 router.get('/cash-flow', cashFlowReport);
+router.get('/monthly-chart', monthlyChart);
 export default router;

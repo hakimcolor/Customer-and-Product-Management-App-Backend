@@ -30,6 +30,13 @@ enum LoanType {
   LEND
 }
 
+enum LoanStatus {
+  ACTIVE
+  PARTIALLY_PAID
+  FULLY_PAID
+  OVERDUE
+}
+
 enum LedgerType {
   DEBIT
   CREDIT
@@ -64,6 +71,18 @@ enum AuditAction {
   LOGOUT
   APPROVE
   REJECT
+}
+
+enum StockMovementType {
+  SALE
+  SALE_RETURN
+  PURCHASE
+  PURCHASE_RETURN
+  ADJUSTMENT
+  DAMAGE
+  TRANSFER_OUT
+  TRANSFER_IN
+  OPENING
 }
 
 enum StockAdjustmentReason {

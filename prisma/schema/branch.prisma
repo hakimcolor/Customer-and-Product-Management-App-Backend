@@ -17,6 +17,7 @@ model Branch {
   accounts        Account[]
   warehouses      Warehouse[]
   stockAdjustments StockAdjustment[]
+  stockMovements   StockMovement[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 

@@ -3,6 +3,7 @@ import prisma from '../../utils/prisma';
 import { sendSuccess } from '../../utils/response';
 import { AppError } from '../../middleware/error.middleware';
 import { getPagination, paginate } from '../../utils/pagination';
+import { recordStockMovement } from '../../utils/stockMovement';
 
 export const getSales = async (
   req: Request,
@@ -93,22 +94,35 @@ export const createSale = async (
         },
         include: { items: { include: { product: true } }, customer: true },
       });
-      // Deduct stock
+      // Deduct stock + record movement
       for (const item of items) {
         const stock = await tx.stock.findFirst({
           where: { productId: item.productId, branchId, warehouseId: null },
         });
-        if (stock)
+        if (stock) {
           await tx.stock.update({
             where: { id: stock.id },
             data: { quantity: { decrement: item.quantity } },
           });
+          await recordStockMovement(tx, {
+            productId: item.productId,
+            branchId,
+            type: 'SALE',
+            quantity: -item.quantity,
+            before: stock.quantity,
+            refType: 'sale',
+            refId: s.id,
+          });
+        }
       }
-      // Update customer dues & ledger
+      // Update customer dues, balance & ledger
       if (customerId && dueAmount > 0) {
         await tx.customer.update({
           where: { id: customerId },
-          data: { dues: { increment: dueAmount } },
+          data: {
+            dues: { increment: dueAmount },
+            balance: { decrement: dueAmount },
+          },
         });
         await tx.ledger.create({
           data: {
