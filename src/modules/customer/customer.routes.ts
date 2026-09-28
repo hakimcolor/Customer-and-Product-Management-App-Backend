@@ -1,15 +1,22 @@
 import { Router } from 'express';
-import { getCustomers, createCustomer, getCustomer, updateCustomer, deleteCustomer, getCustomerLedger } from './customer.controller';
+import {
+  getCustomers,
+  createCustomer,
+  getCustomer,
+  updateCustomer,
+  deleteCustomer,
+  getCustomerLedger,
+  getCustomerStatement,
+} from './customer.controller';
 import { authenticate } from '../../middleware/auth.middleware';
-import { validate } from '../../middleware/validate.middleware';
-import { customerSchema } from './customer.validator';
 
 const router = Router();
 router.use(authenticate);
 router.get('/', getCustomers);
-router.post('/', validate(customerSchema), createCustomer);
+router.post('/', createCustomer);
 router.get('/:id', getCustomer);
-router.put('/:id', validate(customerSchema.partial()), updateCustomer);
+router.put('/:id', updateCustomer);
 router.delete('/:id', deleteCustomer);
 router.get('/:id/ledger', getCustomerLedger);
+router.get('/:id/statement', getCustomerStatement);
 export default router;

@@ -32,6 +32,8 @@ import {
   getDamages,
   getStockAdjustments,
   uploadProductImage,
+  duplicateProduct,
+  generateBarcode,
 } from './product.controller';
 import { authenticate, authorize } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
@@ -151,6 +153,12 @@ router.post(
   authorize('ADMIN', 'MANAGER'),
   productImageUpload.single('image'),
   uploadProductImage
+);
+router.post('/:id/duplicate', authorize('ADMIN', 'MANAGER'), duplicateProduct);
+router.post(
+  '/:id/generate-barcode',
+  authorize('ADMIN', 'MANAGER'),
+  generateBarcode
 );
 
 export default router;

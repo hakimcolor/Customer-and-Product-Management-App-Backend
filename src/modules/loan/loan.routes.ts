@@ -10,6 +10,7 @@ import {
   createCapital,
   updateCapital,
   capitalTransaction,
+  checkOverdueLoans,
 } from './loan.controller';
 import { authenticate, authorize } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
@@ -23,6 +24,7 @@ router.get('/loans/:id', getLoan);
 router.put('/loans/:id', validate(loanSchema.partial()), updateLoan);
 router.delete('/loans/:id', authorize('ADMIN'), deleteLoan);
 router.post('/loans/:id/payment', makeLoanPayment);
+router.post('/loans/check-overdue', checkOverdueLoans);
 router.get('/capital', getCapital);
 router.post('/capital', validate(capitalSchema), createCapital);
 router.put('/capital/:id', validate(capitalSchema.partial()), updateCapital);

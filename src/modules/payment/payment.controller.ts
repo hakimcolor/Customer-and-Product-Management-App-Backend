@@ -99,3 +99,73 @@ export const supplierPayment = async (
     next(err);
   }
 };
+
+export const getPaymentReceipt = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const payment = await prisma.payment.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { customer: true, supplier: true, sale: true, purchase: true },
+    });
+    if (!payment) {
+      res.status(404).json({ success: false, message: 'Payment not found' });
+      return;
+    }
+    // Get company settings
+    const settings = await prisma.systemSetting.findMany({
+      where: { group: 'company' },
+    });
+    const company: Record<string, string> = {};
+    for (const s of settings) company[s.key] = s.value;
+    sendSuccess(res, {
+      company,
+      payment,
+      receiptNo: `REC-${String(payment.id).padStart(6, '0')}`,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const searchByInvoice = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { invoiceNo } = req.query;
+    if (!invoiceNo) {
+      res
+        .status(400)
+        .json({ success: false, message: 'invoiceNo is required' });
+      return;
+    }
+    const q = String(invoiceNo);
+    const [sale, purchase] = await Promise.all([
+      prisma.sale.findFirst({
+        where: { invoiceNo: { contains: q, mode: 'insensitive' } },
+        include: {
+          customer: true,
+          branch: true,
+          items: { include: { product: true } },
+          payments: true,
+        },
+      }),
+      prisma.purchase.findFirst({
+        where: { invoiceNo: { contains: q, mode: 'insensitive' } },
+        include: {
+          supplier: true,
+          branch: true,
+          items: { include: { product: true } },
+          payments: true,
+        },
+      }),
+    ]);
+    sendSuccess(res, { sale: sale || null, purchase: purchase || null });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -205,3 +205,24 @@ export const capitalTransaction = async (
     next(err);
   }
 };
+
+export const checkOverdueLoans = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    // Mark loans as OVERDUE if dueDate has passed and balance > 0
+    const result = await prisma.loan.updateMany({
+      where: {
+        dueDate: { lt: new Date() },
+        balance: { gt: 0 },
+        status: { in: ['ACTIVE', 'PARTIALLY_PAID'] },
+      },
+      data: { status: 'OVERDUE' },
+    });
+    sendSuccess(res, { message: `${result.count} loan(s) marked as overdue` });
+  } catch (err) {
+    next(err);
+  }
+};

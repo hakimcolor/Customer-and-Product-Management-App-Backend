@@ -709,3 +709,58 @@ export const uploadProductImage = async (
     next(err);
   }
 };
+
+export const duplicateProduct = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const original = await prisma.product.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
+    if (!original) throw new AppError('Product not found', 404);
+    const { id, createdAt, updatedAt, barcode, sku, ...rest } = original;
+    const copy = await prisma.product.create({
+      data: {
+        ...rest,
+        title: `${rest.title} (Copy)`,
+        sku: sku ? `${sku}-COPY` : undefined,
+        barcode: undefined,
+      },
+    });
+    sendSuccess(res, copy, 201);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const generateBarcode = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const productId = parseInt(req.params.id);
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+    if (!product) throw new AppError('Product not found', 404);
+    // Generate EAN-13 style barcode: prefix + padded id + checksum
+    const prefix = '200';
+    const padded = String(productId).padStart(9, '0');
+    const partial = `${prefix}${padded}`;
+    let sum = 0;
+    for (let i = 0; i < 12; i++)
+      sum += parseInt(partial[i]) * (i % 2 === 0 ? 1 : 3);
+    const checkDigit = (10 - (sum % 10)) % 10;
+    const barcode = `${partial}${checkDigit}`;
+    await prisma.product.update({
+      where: { id: productId },
+      data: { barcode },
+    });
+    sendSuccess(res, { barcode, product: { ...product, barcode } });
+  } catch (err) {
+    next(err);
+  }
+};
