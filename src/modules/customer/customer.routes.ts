@@ -9,13 +9,15 @@ import {
   getCustomerStatement,
 } from './customer.controller';
 import { authenticate } from '../../middleware/auth.middleware';
+import { validate } from '../../middleware/validate.middleware';
+import { customerSchema } from './customer.validator';
 
 const router = Router();
 router.use(authenticate);
 router.get('/', getCustomers);
-router.post('/', createCustomer);
+router.post('/', validate(customerSchema), createCustomer);
 router.get('/:id', getCustomer);
-router.put('/:id', updateCustomer);
+router.put('/:id', validate(customerSchema.partial()), updateCustomer);
 router.delete('/:id', deleteCustomer);
 router.get('/:id/ledger', getCustomerLedger);
 router.get('/:id/statement', getCustomerStatement);
