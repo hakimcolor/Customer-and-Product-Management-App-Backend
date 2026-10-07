@@ -11,7 +11,7 @@ export const getPurchases = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { supplierId, branchId, startDate, endDate, paymentStatus } =
+    const { supplierId, branchId, startDate, endDate, paymentStatus, search } =
       req.query;
     const { skip, take, page, limit } = getPagination(req);
     const where: Record<string, unknown> = {
@@ -25,6 +25,21 @@ export const getPurchases = async (
             lte: new Date(String(endDate)),
           },
         }),
+      ...(search && {
+        OR: [
+          {
+            invoiceNo: {
+              contains: String(search),
+              mode: 'insensitive' as const,
+            },
+          },
+          {
+            supplier: {
+              name: { contains: String(search), mode: 'insensitive' as const },
+            },
+          },
+        ],
+      }),
     };
     const [data, total] = await Promise.all([
       prisma.purchase.findMany({
