@@ -26,7 +26,13 @@ export const getCustomers = async (
       }),
     };
     const [data, total] = await Promise.all([
-      prisma.customer.findMany({ where, skip, take, orderBy: { name: 'asc' } }),
+      prisma.customer.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { name: 'asc' },
+        include: { _count: { select: { sales: true } } },
+      }),
       prisma.customer.count({ where }),
     ]);
     sendSuccess(res, paginate(data, total, page, limit));
