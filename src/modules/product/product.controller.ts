@@ -17,7 +17,10 @@ export const getCategories = async (
       res,
       await prisma.category.findMany({
         orderBy: { name: 'asc' },
-        include: { subCategories: true },
+        include: {
+          subCategories: true,
+          _count: { select: { products: true } },
+        },
       })
     );
   } catch (err) {
@@ -142,7 +145,13 @@ export const getBrands = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    sendSuccess(res, await prisma.brand.findMany({ orderBy: { name: 'asc' } }));
+    sendSuccess(
+      res,
+      await prisma.brand.findMany({
+        orderBy: { name: 'asc' },
+        include: { _count: { select: { products: true } } },
+      })
+    );
   } catch (err) {
     next(err);
   }
@@ -195,7 +204,13 @@ export const getUnits = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    sendSuccess(res, await prisma.unit.findMany({ orderBy: { name: 'asc' } }));
+    sendSuccess(
+      res,
+      await prisma.unit.findMany({
+        orderBy: { name: 'asc' },
+        include: { _count: { select: { products: true } } },
+      })
+    );
   } catch (err) {
     next(err);
   }
@@ -265,7 +280,12 @@ export const getProducts = async (
         where,
         skip,
         take,
-        include: { category: true, brand: true, unit: true },
+        include: {
+          category: true,
+          brand: true,
+          unit: true,
+          stocks: { include: { branch: true } },
+        },
         orderBy: { title: 'asc' },
       }),
       prisma.product.count({ where }),
