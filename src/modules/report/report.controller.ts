@@ -217,30 +217,54 @@ export const stockReport = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { branchId, categoryId, warehouseId, lowStock } = req.query;
+    const { branchId, categoryId, warehouseId, lowStock, status, search } =
+      req.query;
+    const { skip, take, page, limit } = (
+      await import('../../utils/pagination')
+    ).getPagination(req);
+    const where: Record<string, unknown> = {
+      ...(branchId && { branchId: parseInt(String(branchId)) }),
+      ...(warehouseId && { warehouseId: parseInt(String(warehouseId)) }),
+      ...(categoryId && {
+        product: { categoryId: parseInt(String(categoryId)) },
+      }),
+      ...(search && {
+        product: {
+          title: { contains: String(search), mode: 'insensitive' as const },
+        },
+      }),
+    };
     const stock = await prisma.stock.findMany({
-      where: {
-        ...(branchId && { branchId: parseInt(String(branchId)) }),
-        ...(warehouseId && { warehouseId: parseInt(String(warehouseId)) }),
-        ...(categoryId && {
-          product: { categoryId: parseInt(String(categoryId)) },
-        }),
-      },
+      where,
       include: {
         product: { include: { category: true, brand: true } },
         branch: true,
+        warehouse: true,
       },
       orderBy: { product: { title: 'asc' } },
     });
-    const result =
-      lowStock === 'true'
-        ? stock.filter((s) => s.quantity <= s.product.alertQuantity)
-        : stock;
+
+    let result = stock;
+    if (lowStock === 'true' || status === 'low') {
+      result = stock.filter(
+        (s) => s.quantity > 0 && s.quantity <= s.product.alertQuantity
+      );
+    } else if (status === 'out') {
+      result = stock.filter((s) => s.quantity <= 0);
+    } else if (status === 'damaged') {
+      result = stock.filter((s) => (s.damagedQuantity ?? 0) > 0);
+    }
+
     const totalValue = result.reduce(
       (sum, s) => sum + s.quantity * s.product.purchasePrice,
       0
     );
-    sendSuccess(res, { totalValue, count: result.length, data: result });
+    const paginated = result.slice(skip, skip + take);
+    const { paginate } = await import('../../utils/pagination');
+    sendSuccess(res, {
+      ...paginate(paginated, result.length, page, limit),
+      totalValue,
+    });
   } catch (err) {
     next(err);
   }
