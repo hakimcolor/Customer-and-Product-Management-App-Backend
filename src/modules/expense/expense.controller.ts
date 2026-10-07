@@ -11,7 +11,8 @@ export const getExpenses = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { category, branchId, startDate, endDate, paymentType } = req.query;
+    const { category, branchId, startDate, endDate, paymentType, search } =
+      req.query;
     const { skip, take, page, limit } = getPagination(req);
     const where: Record<string, unknown> = {
       ...(category && { category: String(category) }),
@@ -24,13 +25,32 @@ export const getExpenses = async (
             lte: new Date(String(endDate)),
           },
         }),
+      ...(search && {
+        OR: [
+          {
+            description: {
+              contains: String(search),
+              mode: 'insensitive' as const,
+            },
+          },
+          {
+            category: {
+              contains: String(search),
+              mode: 'insensitive' as const,
+            },
+          },
+        ],
+      }),
     };
     const [data, total] = await Promise.all([
       prisma.expense.findMany({
         where,
         skip,
         take,
-        include: { branch: true },
+        include: {
+          branch: true,
+          account: { select: { id: true, name: true } },
+        },
         orderBy: { date: 'desc' },
       }),
       prisma.expense.count({ where }),
