@@ -11,13 +11,16 @@ export const getAccounts = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { branchId, accountType } = req.query;
+    const { branchId, accountType, search } = req.query;
     sendSuccess(
       res,
       await prisma.account.findMany({
         where: {
           ...(branchId && { branchId: parseInt(String(branchId)) }),
           ...(accountType && { accountType: String(accountType) as never }),
+          ...(search && {
+            name: { contains: String(search), mode: 'insensitive' as const },
+          }),
         },
         include: { branch: true },
         orderBy: { name: 'asc' },
@@ -102,7 +105,7 @@ export const getTransactions = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { accountId, startDate, endDate } = req.query;
+    const { accountId, startDate, endDate, limit: lim } = req.query;
     const { skip, take, page, limit } = getPagination(req);
     const where: Record<string, unknown> = {
       ...(accountId && { accountId: parseInt(String(accountId)) }),
@@ -114,17 +117,20 @@ export const getTransactions = async (
           },
         }),
     };
+    const finalTake = lim ? parseInt(String(lim)) : take;
     const [data, total] = await Promise.all([
       prisma.accountTransaction.findMany({
         where,
-        skip,
-        take,
-        include: { account: true },
+        skip: lim ? 0 : skip,
+        take: finalTake,
+        include: {
+          account: { select: { id: true, name: true, accountType: true } },
+        },
         orderBy: { date: 'desc' },
       }),
       prisma.accountTransaction.count({ where }),
     ]);
-    sendSuccess(res, paginate(data, total, page, limit));
+    sendSuccess(res, paginate(data, total, page, lim ? 1 : limit));
   } catch (err) {
     next(err);
   }
