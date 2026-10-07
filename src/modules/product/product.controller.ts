@@ -449,22 +449,76 @@ export const adjustStock = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { productId, branchId, quantity, reason, notes } = req.body;
-    const existing = await prisma.stock.findFirst({
-      where: { productId, branchId, warehouseId: null },
-    });
-    if (!existing) throw new AppError('Stock record not found', 404);
+    const {
+      productId,
+      branchId,
+      quantity,
+      type = 'ADD',
+      reason,
+      notes,
+    } = req.body;
+    const isAdd = String(type).toUpperCase() !== 'REMOVE';
+    const qtyChange = isAdd ? Math.abs(quantity) : -Math.abs(quantity);
 
-    await prisma.$transaction([
-      prisma.stockAdjustment.create({
-        data: { productId, branchId, quantity, reason, notes },
-      }),
-      prisma.stock.update({
-        where: { id: existing.id },
-        data: { quantity: { increment: quantity } },
-      }),
-    ]);
-    sendSuccess(res, { message: 'Stock adjusted' }, 201);
+    const existing = await prisma.stock.findFirst({
+      where: { productId, branchId: branchId || undefined, warehouseId: null },
+    });
+
+    if (!isAdd && existing && existing.quantity < Math.abs(quantity)) {
+      throw new AppError('Insufficient stock to remove', 400);
+    }
+
+    if (existing) {
+      await prisma.$transaction([
+        prisma.stockAdjustment.create({
+          data: {
+            productId,
+            branchId: branchId || undefined,
+            quantity: qtyChange,
+            reason: reason || notes,
+          },
+        }),
+        prisma.stock.update({
+          where: { id: existing.id },
+          data: {
+            quantity: isAdd
+              ? { increment: Math.abs(quantity) }
+              : { decrement: Math.abs(quantity) },
+          },
+        }),
+      ]);
+    } else if (isAdd) {
+      await prisma.$transaction([
+        prisma.stockAdjustment.create({
+          data: {
+            productId,
+            branchId: branchId || undefined,
+            quantity: qtyChange,
+            reason: reason || notes,
+          },
+        }),
+        prisma.stock.create({
+          data: {
+            productId,
+            branchId: branchId || undefined,
+            quantity: Math.abs(quantity),
+            openingStock: 0,
+          },
+        }),
+      ]);
+    } else {
+      throw new AppError('Stock record not found', 404);
+    }
+
+    sendSuccess(
+      res,
+      {
+        message: 'Stock adjusted',
+        type: isAdd ? 'ADD' : 'REMOVE',
+        quantity: Math.abs(quantity),
+      },
+      201
+    );
   } catch (err) {
     next(err);
   }
