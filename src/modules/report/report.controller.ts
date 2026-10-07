@@ -742,7 +742,7 @@ export const monthlyChart = async (
     ]);
 
     // Group by YYYY-MM
-    const group = (
+    const groupByMonth = (
       rows: {
         date: Date;
         _sum: { totalAmount?: number | null; amount?: number | null };
@@ -756,10 +756,35 @@ export const monthlyChart = async (
       return map;
     };
 
+    const salesMap = groupByMonth(sales as never);
+    const purchasesMap = groupByMonth(purchases as never);
+    const expensesMap = groupByMonth(expenses as never);
+
+    // Build sorted array for charts
+    const allKeys = Array.from(
+      new Set([
+        ...Object.keys(salesMap),
+        ...Object.keys(purchasesMap),
+        ...Object.keys(expensesMap),
+      ])
+    ).sort();
+
+    const monthlySales = allKeys.map((month) => ({
+      month,
+      sales: salesMap[month] || 0,
+      purchases: purchasesMap[month] || 0,
+      expenses: expensesMap[month] || 0,
+      profit:
+        (salesMap[month] || 0) -
+        (purchasesMap[month] || 0) -
+        (expensesMap[month] || 0),
+    }));
+
     sendSuccess(res, {
-      monthlySales: group(sales as never),
-      monthlyPurchases: group(purchases as never),
-      monthlyExpenses: group(expenses as never),
+      monthlySales,
+      salesMap,
+      purchasesMap,
+      expensesMap,
     });
   } catch (err) {
     next(err);
