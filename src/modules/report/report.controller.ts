@@ -480,6 +480,41 @@ export const dashboardStats = async (
 
     sendSuccess(res, {
       period,
+      // Top-level fields that frontend dashboard reads directly
+      periodSales: {
+        _sum: { totalAmount: revenue },
+        _count: periodSales._count,
+      },
+      periodPurchases: {
+        _sum: { totalAmount: cogs },
+        _count: periodPurchases._count,
+      },
+      periodExpenses: { _sum: { amount: expenses } },
+      totalCustomerDues: totalCustomerDues._sum.dues || 0,
+      totalSupplierDues: totalSupplierDues._sum.dues || 0,
+      cashBalance: cashBalance._sum.balance || 0,
+      bankBalance: bankBalance._sum.balance || 0,
+      stockValue: totalStockValue,
+      lowStockCount,
+      outOfStockCount,
+      recentSales,
+      lowStockProducts: allStocks
+        .filter((s) => s.quantity > 0 && s.quantity <= s.product.alertQuantity)
+        .slice(0, 5)
+        .map((s) => ({
+          name:
+            (
+              s.product as {
+                title?: string;
+                purchasePrice: number;
+                alertQuantity: number;
+              }
+            ).title ?? 'Product',
+          currentStock: s.quantity,
+          alertQty: s.product.alertQuantity,
+        })),
+      totalProducts: allStocks.length,
+      // Nested summary for compatibility
       summary: {
         totalSales: revenue,
         salesCount: periodSales._count,
