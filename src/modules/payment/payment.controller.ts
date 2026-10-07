@@ -9,11 +9,14 @@ export const getPayments = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { customerId, supplierId, startDate, endDate } = req.query;
+    const { customerId, supplierId, startDate, endDate, type, search } =
+      req.query;
     const { skip, take, page, limit } = getPagination(req);
     const where: Record<string, unknown> = {
       ...(customerId && { customerId: parseInt(String(customerId)) }),
       ...(supplierId && { supplierId: parseInt(String(supplierId)) }),
+      ...(type === 'customer' && { customerId: { not: null } }),
+      ...(type === 'supplier' && { supplierId: { not: null } }),
       ...(startDate &&
         endDate && {
           date: {
@@ -21,6 +24,21 @@ export const getPayments = async (
             lte: new Date(String(endDate)),
           },
         }),
+      ...(search && {
+        OR: [
+          {
+            customer: {
+              name: { contains: String(search), mode: 'insensitive' as const },
+            },
+          },
+          {
+            supplier: {
+              name: { contains: String(search), mode: 'insensitive' as const },
+            },
+          },
+          { notes: { contains: String(search), mode: 'insensitive' as const } },
+        ],
+      }),
     };
     const [data, total] = await Promise.all([
       prisma.payment.findMany({
@@ -28,7 +46,11 @@ export const getPayments = async (
         skip,
         take,
         orderBy: { date: 'desc' },
-        include: { customer: true, supplier: true },
+        include: {
+          customer: true,
+          supplier: true,
+          account: { select: { id: true, name: true } },
+        },
       }),
       prisma.payment.count({ where }),
     ]);
